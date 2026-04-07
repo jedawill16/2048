@@ -3,43 +3,67 @@ Timing Analyzer Summary
 ------------------------------------------------------------
 
 Type  : Slow 1200mV 85C Model Setup 'U1|video_PLL_inst|altpll_component|auto_generated|pll1|clk[0]'
-Slack : -20.064
-TNS   : -215.137
+Slack : -20.769
+TNS   : -304.668
+
+Type  : Slow 1200mV 85C Model Setup 'CLOCK_50'
+Slack : -3.740
+TNS   : -107.208
+
+Type  : Slow 1200mV 85C Model Hold 'CLOCK_50'
+Slack : 0.390
+TNS   : 0.000
 
 Type  : Slow 1200mV 85C Model Hold 'U1|video_PLL_inst|altpll_component|auto_generated|pll1|clk[0]'
-Slack : 0.451
+Slack : 0.401
 TNS   : 0.000
 
 Type  : Slow 1200mV 85C Model Minimum Pulse Width 'U1|video_PLL_inst|altpll_component|auto_generated|pll1|clk[0]'
-Slack : 3.554
+Slack : 3.541
 TNS   : 0.000
 
 Type  : Slow 1200mV 85C Model Minimum Pulse Width 'CLOCK_50'
-Slack : 4.819
+Slack : 4.674
 TNS   : 0.000
 
 Type  : Slow 1200mV 0C Model Setup 'U1|video_PLL_inst|altpll_component|auto_generated|pll1|clk[0]'
-Slack : -17.432
-TNS   : -186.590
+Slack : -18.096
+TNS   : -264.807
+
+Type  : Slow 1200mV 0C Model Setup 'CLOCK_50'
+Slack : -2.624
+TNS   : -69.984
+
+Type  : Slow 1200mV 0C Model Hold 'CLOCK_50'
+Slack : 0.349
+TNS   : 0.000
 
 Type  : Slow 1200mV 0C Model Hold 'U1|video_PLL_inst|altpll_component|auto_generated|pll1|clk[0]'
-Slack : 0.419
+Slack : 0.353
 TNS   : 0.000
 
 Type  : Slow 1200mV 0C Model Minimum Pulse Width 'U1|video_PLL_inst|altpll_component|auto_generated|pll1|clk[0]'
-Slack : 3.539
+Slack : 3.531
 TNS   : 0.000
 
 Type  : Slow 1200mV 0C Model Minimum Pulse Width 'CLOCK_50'
-Slack : 4.799
+Slack : 4.687
 TNS   : 0.000
 
 Type  : Fast 1200mV 0C Model Setup 'U1|video_PLL_inst|altpll_component|auto_generated|pll1|clk[0]'
-Slack : -5.929
-TNS   : -62.526
+Slack : -6.278
+TNS   : -90.669
+
+Type  : Fast 1200mV 0C Model Setup 'CLOCK_50'
+Slack : 3.063
+TNS   : 0.000
+
+Type  : Fast 1200mV 0C Model Hold 'CLOCK_50'
+Slack : 0.181
+TNS   : 0.000
 
 Type  : Fast 1200mV 0C Model Hold 'U1|video_PLL_inst|altpll_component|auto_generated|pll1|clk[0]'
-Slack : 0.200
+Slack : 0.181
 TNS   : 0.000
 
 Type  : Fast 1200mV 0C Model Minimum Pulse Width 'U1|video_PLL_inst|altpll_component|auto_generated|pll1|clk[0]'
@@ -47,7 +71,7 @@ Slack : 3.626
 TNS   : 0.000
 
 Type  : Fast 1200mV 0C Model Minimum Pulse Width 'CLOCK_50'
-Slack : 4.400
+Slack : 4.238
 TNS   : 0.000
 
 ------------------------------------------------------------
