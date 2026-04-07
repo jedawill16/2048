@@ -1,0 +1,52 @@
+library ieee;
+use ieee.std_logic_1164.all;
+use ieee.numeric_std.all;
+
+entity tiles_2048 is
+  port(
+    pixel_row    : in  std_logic_vector(10 downto 0);
+    pixel_column : in  std_logic_vector(10 downto 0);
+    tile_on      : out std_logic;
+    Red          : out std_logic_vector(7 downto 0);
+    Green        : out std_logic_vector(7 downto 0);
+    Blue         : out std_logic_vector(7 downto 0)
+  );
+end tiles_2048;
+
+architecture behavior of tiles_2048 is
+  constant BOARD_X    : integer := 252;
+  constant BOARD_Y    : integer := 124;
+  constant CELL_SIZE  : integer := 120;
+  constant GAP        : integer := 10;
+
+  -- one sample tile at row 0, col 0
+  constant TILE_ROW   : integer := 0;
+  constant TILE_COL   : integer := 0;
+
+  constant TILE_X     : integer := BOARD_X + TILE_COL * (CELL_SIZE + GAP);
+  constant TILE_Y     : integer := BOARD_Y + TILE_ROW * (CELL_SIZE + GAP);
+begin
+
+  process(pixel_row, pixel_column)
+    variable x, y : integer;
+  begin
+    x := to_integer(unsigned(pixel_column));
+    y := to_integer(unsigned(pixel_row));
+
+    tile_on <= '0';
+    Red     <= (others => '0');
+    Green   <= (others => '0');
+    Blue    <= (others => '0');
+
+    if (x >= TILE_X) and (x < TILE_X + CELL_SIZE) and
+       (y >= TILE_Y) and (y < TILE_Y + CELL_SIZE) then
+      tile_on <= '1';
+
+      -- tile color for value 2
+      Red   <= x"EE";
+      Green <= x"E4";
+      Blue  <= x"DA";
+    end if;
+  end process;
+
+end behavior;
