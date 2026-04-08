@@ -1,0 +1,93 @@
+library ieee;
+use ieee.std_logic_1164.all;
+use ieee.numeric_std.all;
+
+entity board_manager is
+  port(
+    clk          : in  std_logic;
+    reset        : in  std_logic;
+
+    move_left    : in  std_logic;
+    move_right   : in  std_logic;
+    move_up      : in  std_logic;
+    move_down    : in  std_logic;
+
+    board_out    : out std_logic_vector(63 downto 0)
+  );
+end board_manager;
+
+architecture behavior of board_manager is
+
+  component movement
+    port(
+      board_in   : in  std_logic_vector(63 downto 0);
+      move_left  : in  std_logic;
+      move_right : in  std_logic;
+      move_up    : in  std_logic;
+      move_down  : in  std_logic;
+      board_out  : out std_logic_vector(63 downto 0);
+      moved      : out std_logic
+    );
+  end component;
+
+  component random_generation
+    port(
+      clk        : in  std_logic;
+      reset      : in  std_logic;
+      spawn_en   : in  std_logic;
+      board_in   : in  std_logic_vector(63 downto 0);
+      board_out  : out std_logic_vector(63 downto 0)
+    );
+  end component;
+
+  signal board_reg      : std_logic_vector(63 downto 0) := (others => '0');
+  signal moved_board    : std_logic_vector(63 downto 0);
+  signal spawned_board  : std_logic_vector(63 downto 0);
+  signal moved_int      : std_logic;
+  signal spawn_en_int   : std_logic;
+
+begin
+
+  U_MOVE: movement
+    port map(
+      board_in   => board_reg,
+      move_left  => move_left,
+      move_right => move_right,
+      move_up    => move_up,
+      move_down  => move_down,
+      board_out  => moved_board,
+      moved      => moved_int
+    );
+
+  U_SPAWN: random_generation
+    port map(
+      clk       => clk,
+      reset     => reset,
+      spawn_en  => spawn_en_int,
+      board_in  => moved_board,
+      board_out => spawned_board
+    );
+
+  process(clk, reset)
+    variable init_board : std_logic_vector(63 downto 0);
+  begin
+    if reset = '1' then
+      init_board := (others => '0');
+
+      -- two starting tiles
+      init_board(3 downto 0)   := "0001";  -- cell 0
+      init_board(23 downto 20) := "0001";  -- cell 5
+
+      board_reg <= init_board;
+
+    elsif rising_edge(clk) then
+      if moved_int = '1' then
+        board_reg <= spawned_board;
+      end if;
+    end if;
+  end process;
+
+  spawn_en_int <= moved_int;
+  board_out <= board_reg;
+
+end behavior;

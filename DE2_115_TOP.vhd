@@ -7,18 +7,15 @@ entity DE2_115_TOP is
     TICKS_PER_SECOND : natural := 50_000_000
   );
   port (
-    -- Clocks
     CLOCK_50   : in std_logic;
     CLOCK2_50  : in std_logic;
     CLOCK3_50  : in std_logic;
     SMA_CLKIN  : in std_logic;
     SMA_CLKOUT : out std_logic;
 
-    -- Buttons and switches
     KEY : in std_logic_vector(3 downto 0);
     SW  : in std_logic_vector(17 downto 0);
 
-    -- LED displays
     HEX0 : out std_logic_vector(6 downto 0);
     HEX1 : out std_logic_vector(6 downto 0);
     HEX2 : out std_logic_vector(6 downto 0);
@@ -30,13 +27,11 @@ entity DE2_115_TOP is
     LEDG : out std_logic_vector(8 downto 0);
     LEDR : out std_logic_vector(17 downto 0);
 
-    -- RS-232 interface
     UART_CTS : out std_logic;
     UART_RTS : in std_logic;
     UART_RXD : in std_logic;
     UART_TXD : out std_logic;
 
-    -- LCD Module
     LCD_BLON : out std_logic;
     LCD_EN   : out std_logic;
     LCD_ON   : out std_logic;
@@ -44,13 +39,11 @@ entity DE2_115_TOP is
     LCD_RW   : out std_logic;
     LCD_DATA : inout std_logic_vector(7 downto 0);
 
-    -- PS/2 ports
     PS2_CLK  : inout std_logic;
     PS2_DAT  : inout std_logic;
     PS2_CLK2 : inout std_logic;
     PS2_DAT2 : inout std_logic;
 
-    -- VGA output
     VGA_BLANK_N : out std_logic;
     VGA_CLK     : out std_logic;
     VGA_HS      : out std_logic;
@@ -60,7 +53,6 @@ entity DE2_115_TOP is
     VGA_G       : out std_logic_vector(7 downto 0);
     VGA_B       : out std_logic_vector(7 downto 0);
 
-    -- SRAM
     SRAM_ADDR : out unsigned(19 downto 0);
     SRAM_DQ   : inout unsigned(15 downto 0);
     SRAM_CE_N : out std_logic;
@@ -69,7 +61,6 @@ entity DE2_115_TOP is
     SRAM_UB_N : out std_logic;
     SRAM_WE_N : out std_logic;
 
-    -- Audio CODEC
     AUD_ADCDAT  : in std_logic;
     AUD_ADCLRCK : inout std_logic;
     AUD_BCLK    : inout std_logic;
@@ -101,61 +92,49 @@ architecture structural of DE2_115_TOP is
     );
   end component;
 
+  component movement
+    port(
+      clk        : in  std_logic;
+      reset      : in  std_logic;
+      key_left   : in  std_logic;
+      key_up     : in  std_logic;
+      key_down   : in  std_logic;
+      key_right  : in  std_logic;
+      move_left  : out std_logic;
+      move_up    : out std_logic;
+      move_down  : out std_logic;
+      move_right : out std_logic
+    );
+  end component;
+
+  component board_manager
+    port(
+      clk          : in  std_logic;
+      reset        : in  std_logic;
+      vert_sync    : in  std_logic;
+      move_left    : in  std_logic;
+      move_up      : in  std_logic;
+      move_down    : in  std_logic;
+      move_right   : in  std_logic;
+      tile_active  : out std_logic_vector(15 downto 0);
+      tile_value   : out std_logic_vector(63 downto 0);
+      tile_x_bus   : out std_logic_vector(175 downto 0);
+      tile_y_bus   : out std_logic_vector(175 downto 0)
+    );
+  end component;
+
   component tiles_2048
     port(
       pixel_row    : in  std_logic_vector(10 downto 0);
       pixel_column : in  std_logic_vector(10 downto 0);
-
-      cell00 : in std_logic_vector(3 downto 0);
-      cell01 : in std_logic_vector(3 downto 0);
-      cell02 : in std_logic_vector(3 downto 0);
-      cell03 : in std_logic_vector(3 downto 0);
-      cell10 : in std_logic_vector(3 downto 0);
-      cell11 : in std_logic_vector(3 downto 0);
-      cell12 : in std_logic_vector(3 downto 0);
-      cell13 : in std_logic_vector(3 downto 0);
-      cell20 : in std_logic_vector(3 downto 0);
-      cell21 : in std_logic_vector(3 downto 0);
-      cell22 : in std_logic_vector(3 downto 0);
-      cell23 : in std_logic_vector(3 downto 0);
-      cell30 : in std_logic_vector(3 downto 0);
-      cell31 : in std_logic_vector(3 downto 0);
-      cell32 : in std_logic_vector(3 downto 0);
-      cell33 : in std_logic_vector(3 downto 0);
-
-      tile_on : out std_logic;
-      Red     : out std_logic_vector(7 downto 0);
-      Green   : out std_logic_vector(7 downto 0);
-      Blue    : out std_logic_vector(7 downto 0)
-    );
-  end component;
-
-  component movement_2048
-    port(
-      clk       : in  std_logic;
-      reset_n   : in  std_logic;
-
-      key_left  : in  std_logic;
-      key_up    : in  std_logic;
-      key_down  : in  std_logic;
-      key_right : in  std_logic;
-
-      cell00 : out std_logic_vector(3 downto 0);
-      cell01 : out std_logic_vector(3 downto 0);
-      cell02 : out std_logic_vector(3 downto 0);
-      cell03 : out std_logic_vector(3 downto 0);
-      cell10 : out std_logic_vector(3 downto 0);
-      cell11 : out std_logic_vector(3 downto 0);
-      cell12 : out std_logic_vector(3 downto 0);
-      cell13 : out std_logic_vector(3 downto 0);
-      cell20 : out std_logic_vector(3 downto 0);
-      cell21 : out std_logic_vector(3 downto 0);
-      cell22 : out std_logic_vector(3 downto 0);
-      cell23 : out std_logic_vector(3 downto 0);
-      cell30 : out std_logic_vector(3 downto 0);
-      cell31 : out std_logic_vector(3 downto 0);
-      cell32 : out std_logic_vector(3 downto 0);
-      cell33 : out std_logic_vector(3 downto 0)
+      tile_active  : in  std_logic_vector(15 downto 0);
+      tile_value   : in  std_logic_vector(63 downto 0);
+      tile_x_bus   : in  std_logic_vector(175 downto 0);
+      tile_y_bus   : in  std_logic_vector(175 downto 0);
+      tile_on      : out std_logic;
+      Red          : out std_logic_vector(7 downto 0);
+      Green        : out std_logic_vector(7 downto 0);
+      Blue         : out std_logic_vector(7 downto 0)
     );
   end component;
 
@@ -168,10 +147,12 @@ architecture structural of DE2_115_TOP is
   signal tile_r, tile_g, tile_b : std_logic_vector(7 downto 0);
   signal tile_on_int : std_logic;
 
-  signal cell00_s, cell01_s, cell02_s, cell03_s : std_logic_vector(3 downto 0);
-  signal cell10_s, cell11_s, cell12_s, cell13_s : std_logic_vector(3 downto 0);
-  signal cell20_s, cell21_s, cell22_s, cell23_s : std_logic_vector(3 downto 0);
-  signal cell30_s, cell31_s, cell32_s, cell33_s : std_logic_vector(3 downto 0);
+  signal move_left_int, move_up_int, move_down_int, move_right_int : std_logic;
+
+  signal tile_active_bus : std_logic_vector(15 downto 0);
+  signal tile_value_bus  : std_logic_vector(63 downto 0);
+  signal tile_x_bus_int  : std_logic_vector(175 downto 0);
+  signal tile_y_bus_int  : std_logic_vector(175 downto 0);
 
 begin
 
@@ -208,56 +189,43 @@ begin
       Blue         => grid_b
     );
 
-  U3: movement_2048
+  U_MOVE: movement
     port map(
-      clk       => CLOCK_50,
-      reset_n   => SW(17),
-
-      key_left  => KEY(3),
-      key_up    => KEY(2),
-      key_down  => KEY(1),
-      key_right => KEY(0),
-
-      cell00 => cell00_s,
-      cell01 => cell01_s,
-      cell02 => cell02_s,
-      cell03 => cell03_s,
-      cell10 => cell10_s,
-      cell11 => cell11_s,
-      cell12 => cell12_s,
-      cell13 => cell13_s,
-      cell20 => cell20_s,
-      cell21 => cell21_s,
-      cell22 => cell22_s,
-      cell23 => cell23_s,
-      cell30 => cell30_s,
-      cell31 => cell31_s,
-      cell32 => cell32_s,
-      cell33 => cell33_s
+      clk        => CLOCK_50,
+      reset      => SW(17),
+      key_left   => KEY(3),
+      key_up     => KEY(2),
+      key_down   => KEY(1),
+      key_right  => KEY(0),
+      move_left  => move_left_int,
+      move_up    => move_up_int,
+      move_down  => move_down_int,
+      move_right => move_right_int
     );
 
-  U4: tiles_2048
+  U_BOARD: board_manager
+    port map(
+      clk         => CLOCK_50,
+      reset       => SW(17),
+      vert_sync   => vert_sync_int,
+      move_left   => move_left_int,
+      move_up     => move_up_int,
+      move_down   => move_down_int,
+      move_right  => move_right_int,
+      tile_active => tile_active_bus,
+      tile_value  => tile_value_bus,
+      tile_x_bus  => tile_x_bus_int,
+      tile_y_bus  => tile_y_bus_int
+    );
+
+  U3: tiles_2048
     port map(
       pixel_row    => pixel_row_int,
       pixel_column => pixel_column_int,
-
-      cell00 => cell00_s,
-      cell01 => cell01_s,
-      cell02 => cell02_s,
-      cell03 => cell03_s,
-      cell10 => cell10_s,
-      cell11 => cell11_s,
-      cell12 => cell12_s,
-      cell13 => cell13_s,
-      cell20 => cell20_s,
-      cell21 => cell21_s,
-      cell22 => cell22_s,
-      cell23 => cell23_s,
-      cell30 => cell30_s,
-      cell31 => cell31_s,
-      cell32 => cell32_s,
-      cell33 => cell33_s,
-
+      tile_active  => tile_active_bus,
+      tile_value   => tile_value_bus,
+      tile_x_bus   => tile_x_bus_int,
+      tile_y_bus   => tile_y_bus_int,
       tile_on      => tile_on_int,
       Red          => tile_r,
       Green        => tile_g,
@@ -268,7 +236,6 @@ begin
   green_int <= tile_g when tile_on_int = '1' else grid_g;
   blue_int  <= tile_b when tile_on_int = '1' else grid_b;
 
-  -- Unused outputs
   SMA_CLKOUT <= '0';
 
   UART_CTS <= '0';
