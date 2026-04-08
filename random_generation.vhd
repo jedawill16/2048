@@ -4,50 +4,55 @@ use ieee.numeric_std.all;
 
 entity random_generation is
   port(
-    clk        : in  std_logic;
-    reset      : in  std_logic;
-    spawn_en   : in  std_logic;
-    board_in   : in  std_logic_vector(63 downto 0);
-    board_out  : out std_logic_vector(63 downto 0)
+    clk           : in  std_logic;
+    reset         : in  std_logic;
+    spawn_en      : in  std_logic;
+    occupied_cells: in  std_logic_vector(15 downto 0);
+
+    spawn_valid   : out std_logic;
+    spawn_row     : out std_logic_vector(1 downto 0);
+    spawn_col     : out std_logic_vector(1 downto 0);
+    spawn_value   : out std_logic_vector(3 downto 0)
   );
 end random_generation;
 
 architecture behavior of random_generation is
-  signal rand_ctr : unsigned(7 downto 0) := x"5A";
+  signal lfsr : unsigned(7 downto 0) := x"5A";
 begin
-
   process(clk, reset)
-    variable temp_board : std_logic_vector(63 downto 0);
-    variable start_idx  : integer;
-    variable idx        : integer;
-    variable found      : boolean;
-    variable cell_bits  : integer;
+    variable start_idx : integer;
+    variable idx       : integer;
+    variable found     : boolean;
   begin
     if reset = '1' then
-      rand_ctr <= x"5A";
-      board_out <= (others => '0');
+      lfsr        <= x"5A";
+      spawn_valid <= '0';
+      spawn_row   <= (others => '0');
+      spawn_col   <= (others => '0');
+      spawn_value <= "0001";  -- always spawn 2
 
     elsif rising_edge(clk) then
-      rand_ctr <= rand_ctr + 1;
-      temp_board := board_in;
+      -- keep changing pseudo-random state
+      lfsr <= lfsr(6 downto 0) & (lfsr(7) xor lfsr(5) xor lfsr(4) xor lfsr(3));
+
+      spawn_valid <= '0';
+      spawn_value <= "0001";  -- new tiles are always 2 (red)
 
       if spawn_en = '1' then
-        start_idx := to_integer(rand_ctr(3 downto 0));
+        start_idx := to_integer(lfsr(3 downto 0));
         found := false;
 
-        for offset in 0 to 15 loop
-          idx := (start_idx + offset) mod 16;
-          cell_bits := idx * 4;
+        for k in 0 to 15 loop
+          idx := (start_idx + k) mod 16;
 
-          if temp_board(cell_bits+3 downto cell_bits) = "0000" and not found then
-            temp_board(cell_bits+3 downto cell_bits) := "0001"; -- spawn a 2
+          if occupied_cells(idx) = '0' and (not found) then
+            spawn_valid <= '1';
+            spawn_row   <= std_logic_vector(to_unsigned(idx / 4, 2));
+            spawn_col   <= std_logic_vector(to_unsigned(idx mod 4, 2));
             found := true;
           end if;
         end loop;
       end if;
-
-      board_out <= temp_board;
     end if;
   end process;
-
 end behavior;
