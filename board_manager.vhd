@@ -25,19 +25,10 @@ architecture behavior of board_manager is
   constant BOARD_Y   : integer := 124;
   constant CELL_SIZE : integer := 120;
   constant GAP       : integer := 10;
-  constant STEP_PIX  : integer := 10;
 
-  subtype rc_t   is integer range 0 to 3;
-  subtype val_t  is integer range 0 to 15;
-  subtype slot_t is integer range 0 to 15;
-  subtype x_t    is integer range 0 to 1023;
-  subtype y_t    is integer range 0 to 767;
-
-  type rc_array16  is array(0 to 15) of rc_t;
-  type val_array16 is array(0 to 15) of val_t;
-  type bit_array16 is array(0 to 15) of std_logic;
-  type x_array16   is array(0 to 15) of x_t;
-  type y_array16   is array(0 to 15) of y_t;
+  subtype cell_val_t is integer range 0 to 15;
+  type board_t is array (0 to 3, 0 to 3) of cell_val_t;
+  type line_t  is array (0 to 3) of integer range 0 to 15;
 
   component random_generation
     port(
@@ -52,78 +43,19 @@ architecture behavior of board_manager is
     );
   end component;
 
-  signal active_s : bit_array16 := (
-    0 => '1', 1 => '1',
-    others => '0'
+  signal board_s : board_t := (
+    0 => (1, 0, 0, 0),
+    1 => (0, 0, 1, 0),
+    2 => (0, 0, 0, 0),
+    3 => (0, 0, 0, 0)
   );
 
-  signal value_s : val_array16 := (
-    0 => 1,  -- 2
-    1 => 1,  -- 2
-    others => 0
-  );
-
-  signal row_s : rc_array16 := (
-    0 => 0,
-    1 => 1,
-    others => 0
-  );
-
-  signal col_s : rc_array16 := (
-    0 => 0,
-    1 => 2,
-    others => 0
-  );
-
-  signal target_row_s : rc_array16 := (
-    0 => 0,
-    1 => 1,
-    others => 0
-  );
-
-  signal target_col_s : rc_array16 := (
-    0 => 0,
-    1 => 2,
-    others => 0
-  );
-
-  signal cur_x_s : x_array16 := (
-    0 => BOARD_X + 0 * (CELL_SIZE + GAP),
-    1 => BOARD_X + 2 * (CELL_SIZE + GAP),
-    others => 0
-  );
-
-  signal cur_y_s : y_array16 := (
-    0 => BOARD_Y + 0 * (CELL_SIZE + GAP),
-    1 => BOARD_Y + 1 * (CELL_SIZE + GAP),
-    others => 0
-  );
-
-  signal target_x_s : x_array16 := (
-    0 => BOARD_X + 0 * (CELL_SIZE + GAP),
-    1 => BOARD_X + 2 * (CELL_SIZE + GAP),
-    others => 0
-  );
-
-  signal target_y_s : y_array16 := (
-    0 => BOARD_Y + 0 * (CELL_SIZE + GAP),
-    1 => BOARD_Y + 1 * (CELL_SIZE + GAP),
-    others => 0
-  );
-
-  signal animating          : std_logic := '0';
-  signal vs_prev            : std_logic := '0';
-
-  signal occupied_cells_s   : std_logic_vector(15 downto 0);
-  signal spawn_en_s         : std_logic := '0';
-  signal spawn_after_commit : std_logic := '0';
-  signal spawn_wait_s       : std_logic := '0';
-  signal moved_pending_s    : std_logic := '0';
-
-  signal spawn_valid_s      : std_logic;
-  signal spawn_row_s        : std_logic_vector(1 downto 0);
-  signal spawn_col_s        : std_logic_vector(1 downto 0);
-  signal spawn_value_s      : std_logic_vector(3 downto 0);
+  signal occupied_cells_s : std_logic_vector(15 downto 0);
+  signal spawn_en_s       : std_logic := '0';
+  signal spawn_valid_s    : std_logic;
+  signal spawn_row_s      : std_logic_vector(1 downto 0);
+  signal spawn_col_s      : std_logic_vector(1 downto 0);
+  signal spawn_value_s    : std_logic_vector(3 downto 0);
 
 begin
 
@@ -139,299 +71,227 @@ begin
       spawn_value    => spawn_value_s
     );
 
-  process(active_s, row_s, col_s)
+  process(board_s)
     variable occ : std_logic_vector(15 downto 0);
     variable idx : integer range 0 to 15;
   begin
     occ := (others => '0');
 
-    for i in 0 to 15 loop
-      if active_s(i) = '1' then
-        idx := row_s(i) * 4 + col_s(i);
-        occ(idx) := '1';
-      end if;
+    for r in 0 to 3 loop
+      for c in 0 to 3 loop
+        idx := r * 4 + c;
+        if board_s(r, c) /= 0 then
+          occ(idx) := '1';
+        else
+          occ(idx) := '0';
+        end if;
+      end loop;
     end loop;
 
     occupied_cells_s <= occ;
   end process;
 
   process(clk, reset)
-    variable next_row_a : rc_array16;
-    variable next_col_a : rc_array16;
-
-    variable row_used   : integer range 0 to 4;
-    variable col_used   : integer range 0 to 4;
-
-    variable moved_any  : boolean;
-    variable free_slot  : integer range -1 to 15;
-    variable done_all   : boolean;
-    variable sr         : integer range 0 to 3;
-    variable sc         : integer range 0 to 3;
-
-    variable occ        : std_logic_vector(15 downto 0);
-    variable idx        : integer range 0 to 15;
+    variable b        : board_t;
+    variable line_in  : line_t;
+    variable line_out : line_t;
+    variable changed  : boolean;
+    variable merged   : boolean;
+    variable wr       : integer range 0 to 4;
+    variable sr       : integer range 0 to 3;
+    variable sc       : integer range 0 to 3;
   begin
     if reset = '1' then
-      active_s <= (
-        0 => '1', 1 => '1',
-        others => '0'
+      board_s <= (
+        0 => (1, 0, 0, 0),
+        1 => (0, 0, 1, 0),
+        2 => (0, 0, 0, 0),
+        3 => (0, 0, 0, 0)
       );
 
-      value_s <= (
-        0 => 1,
-        1 => 1,
-        others => 0
-      );
-
-      row_s <= (
-        0 => 0,
-        1 => 1,
-        others => 0
-      );
-
-      col_s <= (
-        0 => 0,
-        1 => 2,
-        others => 0
-      );
-
-      target_row_s <= (
-        0 => 0,
-        1 => 1,
-        others => 0
-      );
-
-      target_col_s <= (
-        0 => 0,
-        1 => 2,
-        others => 0
-      );
-
-      cur_x_s <= (
-        0 => BOARD_X + 0 * (CELL_SIZE + GAP),
-        1 => BOARD_X + 2 * (CELL_SIZE + GAP),
-        others => 0
-      );
-
-      cur_y_s <= (
-        0 => BOARD_Y + 0 * (CELL_SIZE + GAP),
-        1 => BOARD_Y + 1 * (CELL_SIZE + GAP),
-        others => 0
-      );
-
-      target_x_s <= (
-        0 => BOARD_X + 0 * (CELL_SIZE + GAP),
-        1 => BOARD_X + 2 * (CELL_SIZE + GAP),
-        others => 0
-      );
-
-      target_y_s <= (
-        0 => BOARD_Y + 0 * (CELL_SIZE + GAP),
-        1 => BOARD_Y + 1 * (CELL_SIZE + GAP),
-        others => 0
-      );
-
-      animating          <= '0';
-      vs_prev            <= '0';
-      spawn_en_s         <= '0';
-      spawn_after_commit <= '0';
-      spawn_wait_s       <= '0';
-      moved_pending_s    <= '0';
-
-    elsif rising_edge(clk) then
-      vs_prev    <= vert_sync;
       spawn_en_s <= '0';
 
-      if spawn_after_commit = '1' then
-        spawn_en_s         <= '1';
-        spawn_after_commit <= '0';
-        spawn_wait_s       <= '1';
-      end if;
+    elsif rising_edge(clk) then
+      spawn_en_s <= '0';
+      b := board_s;
+      changed := false;
 
-      if spawn_wait_s = '1' and spawn_valid_s = '1' then
-        free_slot := -1;
-
-        for i in 0 to 15 loop
-          if active_s(i) = '0' and free_slot = -1 then
-            free_slot := i;
-          end if;
-        end loop;
-
-        if free_slot /= -1 then
-          sr := to_integer(unsigned(spawn_row_s));
-          sc := to_integer(unsigned(spawn_col_s));
-
-          active_s(free_slot)     <= '1';
-          value_s(free_slot)      <= to_integer(unsigned(spawn_value_s));
-          row_s(free_slot)        <= sr;
-          col_s(free_slot)        <= sc;
-          target_row_s(free_slot) <= sr;
-          target_col_s(free_slot) <= sc;
-
-          cur_x_s(free_slot)      <= BOARD_X + sc * (CELL_SIZE + GAP);
-          cur_y_s(free_slot)      <= BOARD_Y + sr * (CELL_SIZE + GAP);
-          target_x_s(free_slot)   <= BOARD_X + sc * (CELL_SIZE + GAP);
-          target_y_s(free_slot)   <= BOARD_Y + sr * (CELL_SIZE + GAP);
-        end if;
-
-        spawn_wait_s    <= '0';
-        moved_pending_s <= '0';
-      end if;
-
-      if animating = '0' and spawn_wait_s = '0' and moved_pending_s = '0' then
-        next_row_a := row_s;
-        next_col_a := col_s;
-        moved_any  := false;
-
-        if move_left = '1' then
-          for r in 0 to 3 loop
-            row_used := 0;
-            for c in 0 to 3 loop
-              for k in 0 to 15 loop
-                if active_s(k) = '1' and row_s(k) = r and col_s(k) = c then
-                  next_row_a(k) := r;
-                  next_col_a(k) := row_used;
-                  row_used := row_used + 1;
-                end if;
-              end loop;
-            end loop;
+      if move_left = '1' then
+        for r in 0 to 3 loop
+          for i in 0 to 3 loop
+            line_in(i)  := b(r, i);
+            line_out(i) := 0;
           end loop;
 
-        elsif move_right = '1' then
-          for r in 0 to 3 loop
-            row_used := 0;
-            for c in 3 downto 0 loop
-              for k in 0 to 15 loop
-                if active_s(k) = '1' and row_s(k) = r and col_s(k) = c then
-                  next_row_a(k) := r;
-                  next_col_a(k) := 3 - row_used;
-                  row_used := row_used + 1;
+          wr := 0;
+          merged := false;
+
+          for i in 0 to 3 loop
+            if line_in(i) /= 0 then
+              if (wr > 0) and (line_out(wr-1) = line_in(i)) and (not merged) then
+                line_out(wr-1) := line_out(wr-1) + 1;
+                changed := true;
+                merged := true;
+              else
+                if i /= wr then
+                  changed := true;
                 end if;
-              end loop;
-            end loop;
-          end loop;
-
-        elsif move_up = '1' then
-          for c in 0 to 3 loop
-            col_used := 0;
-            for r in 0 to 3 loop
-              for k in 0 to 15 loop
-                if active_s(k) = '1' and row_s(k) = r and col_s(k) = c then
-                  next_row_a(k) := col_used;
-                  next_col_a(k) := c;
-                  col_used := col_used + 1;
-                end if;
-              end loop;
-            end loop;
-          end loop;
-
-        elsif move_down = '1' then
-          for c in 0 to 3 loop
-            col_used := 0;
-            for r in 3 downto 0 loop
-              for k in 0 to 15 loop
-                if active_s(k) = '1' and row_s(k) = r and col_s(k) = c then
-                  next_row_a(k) := 3 - col_used;
-                  next_col_a(k) := c;
-                  col_used := col_used + 1;
-                end if;
-              end loop;
-            end loop;
-          end loop;
-        end if;
-
-        for k in 0 to 15 loop
-          if active_s(k) = '1' then
-            if next_row_a(k) /= row_s(k) or next_col_a(k) /= col_s(k) then
-              moved_any := true;
-            end if;
-          end if;
-        end loop;
-
-        if moved_any then
-          target_row_s <= next_row_a;
-          target_col_s <= next_col_a;
-
-          for k in 0 to 15 loop
-            target_x_s(k) <= BOARD_X + next_col_a(k) * (CELL_SIZE + GAP);
-            target_y_s(k) <= BOARD_Y + next_row_a(k) * (CELL_SIZE + GAP);
-          end loop;
-
-          animating       <= '1';
-          moved_pending_s <= '1';
-        end if;
-      end if;
-
-      if (vs_prev = '0' and vert_sync = '1') then
-        if animating = '1' then
-          done_all := true;
-
-          for i in 0 to 15 loop
-            if active_s(i) = '1' then
-              if cur_x_s(i) < target_x_s(i) then
-                if cur_x_s(i) + STEP_PIX >= target_x_s(i) then
-                  cur_x_s(i) <= target_x_s(i);
-                else
-                  cur_x_s(i) <= cur_x_s(i) + STEP_PIX;
-                  done_all := false;
-                end if;
-              elsif cur_x_s(i) > target_x_s(i) then
-                if cur_x_s(i) - STEP_PIX <= target_x_s(i) then
-                  cur_x_s(i) <= target_x_s(i);
-                else
-                  cur_x_s(i) <= cur_x_s(i) - STEP_PIX;
-                  done_all := false;
-                end if;
-              end if;
-
-              if cur_y_s(i) < target_y_s(i) then
-                if cur_y_s(i) + STEP_PIX >= target_y_s(i) then
-                  cur_y_s(i) <= target_y_s(i);
-                else
-                  cur_y_s(i) <= cur_y_s(i) + STEP_PIX;
-                  done_all := false;
-                end if;
-              elsif cur_y_s(i) > target_y_s(i) then
-                if cur_y_s(i) - STEP_PIX <= target_y_s(i) then
-                  cur_y_s(i) <= target_y_s(i);
-                else
-                  cur_y_s(i) <= cur_y_s(i) - STEP_PIX;
-                  done_all := false;
-                end if;
+                line_out(wr) := line_in(i);
+                wr := wr + 1;
+                merged := false;
               end if;
             end if;
           end loop;
 
-          if done_all then
-            row_s <= target_row_s;
-            col_s <= target_col_s;
-            animating <= '0';
+          for i in 0 to 3 loop
+            b(r, i) := line_out(i);
+          end loop;
+        end loop;
 
-            if moved_pending_s = '1' then
-              spawn_after_commit <= '1';
+      elsif move_right = '1' then
+        for r in 0 to 3 loop
+          for i in 0 to 3 loop
+            line_in(i)  := b(r, 3 - i);
+            line_out(i) := 0;
+          end loop;
+
+          wr := 0;
+          merged := false;
+
+          for i in 0 to 3 loop
+            if line_in(i) /= 0 then
+              if (wr > 0) and (line_out(wr-1) = line_in(i)) and (not merged) then
+                line_out(wr-1) := line_out(wr-1) + 1;
+                changed := true;
+                merged := true;
+              else
+                if i /= wr then
+                  changed := true;
+                end if;
+                line_out(wr) := line_in(i);
+                wr := wr + 1;
+                merged := false;
+              end if;
             end if;
-          end if;
+          end loop;
+
+          for i in 0 to 3 loop
+            b(r, 3 - i) := line_out(i);
+          end loop;
+        end loop;
+
+      elsif move_up = '1' then
+        for c in 0 to 3 loop
+          for i in 0 to 3 loop
+            line_in(i)  := b(i, c);
+            line_out(i) := 0;
+          end loop;
+
+          wr := 0;
+          merged := false;
+
+          for i in 0 to 3 loop
+            if line_in(i) /= 0 then
+              if (wr > 0) and (line_out(wr-1) = line_in(i)) and (not merged) then
+                line_out(wr-1) := line_out(wr-1) + 1;
+                changed := true;
+                merged := true;
+              else
+                if i /= wr then
+                  changed := true;
+                end if;
+                line_out(wr) := line_in(i);
+                wr := wr + 1;
+                merged := false;
+              end if;
+            end if;
+          end loop;
+
+          for i in 0 to 3 loop
+            b(i, c) := line_out(i);
+          end loop;
+        end loop;
+
+      elsif move_down = '1' then
+        for c in 0 to 3 loop
+          for i in 0 to 3 loop
+            line_in(i)  := b(3 - i, c);
+            line_out(i) := 0;
+          end loop;
+
+          wr := 0;
+          merged := false;
+
+          for i in 0 to 3 loop
+            if line_in(i) /= 0 then
+              if (wr > 0) and (line_out(wr-1) = line_in(i)) and (not merged) then
+                line_out(wr-1) := line_out(wr-1) + 1;
+                changed := true;
+                merged := true;
+              else
+                if i /= wr then
+                  changed := true;
+                end if;
+                line_out(wr) := line_in(i);
+                wr := wr + 1;
+                merged := false;
+              end if;
+            end if;
+          end loop;
+
+          for i in 0 to 3 loop
+            b(3 - i, c) := line_out(i);
+          end loop;
+        end loop;
+      end if;
+
+      if changed then
+        board_s <= b;
+        spawn_en_s <= '1';
+      end if;
+
+      if spawn_valid_s = '1' then
+        sr := to_integer(unsigned(spawn_row_s));
+        sc := to_integer(unsigned(spawn_col_s));
+
+        if b(sr, sc) = 0 then
+          b(sr, sc) := to_integer(unsigned(spawn_value_s));
+          board_s <= b;
         end if;
       end if;
     end if;
   end process;
 
-  process(active_s, value_s, cur_x_s, cur_y_s)
+  process(board_s)
     variable a_bus : std_logic_vector(15 downto 0);
     variable v_bus : std_logic_vector(63 downto 0);
     variable x_bus : std_logic_vector(175 downto 0);
     variable y_bus : std_logic_vector(175 downto 0);
+    variable idx   : integer range 0 to 15;
+    variable xpos  : integer;
+    variable ypos  : integer;
   begin
     a_bus := (others => '0');
     v_bus := (others => '0');
     x_bus := (others => '0');
     y_bus := (others => '0');
 
-    for i in 0 to 15 loop
-      a_bus(i) := active_s(i);
-      v_bus(i*4+3 downto i*4) := std_logic_vector(to_unsigned(value_s(i), 4));
-      x_bus(i*11+10 downto i*11) := std_logic_vector(to_unsigned(cur_x_s(i), 11));
-      y_bus(i*11+10 downto i*11) := std_logic_vector(to_unsigned(cur_y_s(i), 11));
+    for r in 0 to 3 loop
+      for c in 0 to 3 loop
+        idx := r * 4 + c;
+        xpos := BOARD_X + c * (CELL_SIZE + GAP);
+        ypos := BOARD_Y + r * (CELL_SIZE + GAP);
+
+        if board_s(r, c) /= 0 then
+          a_bus(idx) := '1';
+        else
+          a_bus(idx) := '0';
+        end if;
+
+        v_bus(idx*4+3 downto idx*4) := std_logic_vector(to_unsigned(board_s(r, c), 4));
+        x_bus(idx*11+10 downto idx*11) := std_logic_vector(to_unsigned(xpos, 11));
+        y_bus(idx*11+10 downto idx*11) := std_logic_vector(to_unsigned(ypos, 11));
+      end loop;
     end loop;
 
     tile_active <= a_bus;

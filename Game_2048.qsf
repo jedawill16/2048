@@ -1111,8 +1111,8 @@ set_instance_assignment -name IO_STANDARD LVDS -to HSMC_CLKOUT_N1
 set_global_assignment -name POWER_PRESET_COOLING_SOLUTION "23 MM HEAT SINK WITH 200 LFPM AIRFLOW"
 set_global_assignment -name POWER_BOARD_THERMAL_MODEL "NONE (CONSERVATIVE)"
 
+set_global_assignment -name VHDL_FILE VGA_SYNC_module.vhd
 set_global_assignment -name VHDL_FILE grid_2048.vhd
-set_global_assignment -name VHDL_FILE VGA_SYNC.VHD
 set_global_assignment -name VHDL_FILE DE2_115_TOP.vhd
 set_global_assignment -name QIP_FILE video_pll.qip
 set_global_assignment -name VHDL_FILE tiles_2048.vhd

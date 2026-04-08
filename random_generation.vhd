@@ -29,14 +29,13 @@ begin
       spawn_valid <= '0';
       spawn_row   <= (others => '0');
       spawn_col   <= (others => '0');
-      spawn_value <= "0001";  -- always spawn 2
+      spawn_value <= "0001";
 
     elsif rising_edge(clk) then
-      -- keep changing pseudo-random state
       lfsr <= lfsr(6 downto 0) & (lfsr(7) xor lfsr(5) xor lfsr(4) xor lfsr(3));
 
       spawn_valid <= '0';
-      spawn_value <= "0001";  -- new tiles are always 2 (red)
+      spawn_value <= "0001";
 
       if spawn_en = '1' then
         start_idx := to_integer(lfsr(3 downto 0));
