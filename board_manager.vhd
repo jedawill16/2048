@@ -16,7 +16,10 @@ entity board_manager is
     tile_active  : out std_logic_vector(15 downto 0);
     tile_value   : out std_logic_vector(63 downto 0);
     tile_x_bus   : out std_logic_vector(175 downto 0);
-    tile_y_bus   : out std_logic_vector(175 downto 0)
+    tile_y_bus   : out std_logic_vector(175 downto 0);
+
+    game_won     : out std_logic;
+    game_over    : out std_logic
   );
 end board_manager;
 
@@ -89,6 +92,48 @@ begin
     end loop;
 
     occupied_cells_s <= occ;
+  end process;
+
+  process(board_s)
+    variable won_v       : std_logic;
+    variable full_v      : std_logic;
+    variable can_move_v  : std_logic;
+  begin
+    won_v      := '0';
+    full_v     := '1';
+    can_move_v := '0';
+
+    for r in 0 to 3 loop
+      for c in 0 to 3 loop
+        if board_s(r, c) = 0 then
+          full_v := '0';
+        end if;
+
+        if board_s(r, c) >= 11 then
+          won_v := '1';
+        end if;
+
+        if c < 3 then
+          if board_s(r, c) = board_s(r, c+1) then
+            can_move_v := '1';
+          end if;
+        end if;
+
+        if r < 3 then
+          if board_s(r, c) = board_s(r+1, c) then
+            can_move_v := '1';
+          end if;
+        end if;
+      end loop;
+    end loop;
+
+    game_won <= won_v;
+
+    if (won_v = '0') and (full_v = '1') and (can_move_v = '0') then
+      game_over <= '1';
+    else
+      game_over <= '0';
+    end if;
   end process;
 
   process(clk, reset)

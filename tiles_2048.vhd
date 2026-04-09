@@ -23,7 +23,6 @@ architecture behavior of tiles_2048 is
   constant CELL_SIZE : integer := 120;
 
   function digit_to_seg(d : integer) return std_logic_vector is
-    -- seg order: a b c d e f g
   begin
     case d is
       when 0 => return "1111110";
@@ -90,7 +89,7 @@ begin
           tile_on <= '1';
           hit := true;
 
-          -- tile color
+          -- tile colors and their matching values
           case val is
             when 1  => base_r := x"FF"; base_g := x"00"; base_b := x"00"; -- 2
             when 2  => base_r := x"FF"; base_g := x"88"; base_b := x"00"; -- 4
@@ -103,7 +102,7 @@ begin
             when 9  => base_r := x"FF"; base_g := x"00"; base_b := x"AA"; -- 512
             when 10 => base_r := x"FF"; base_g := x"CC"; base_b := x"DD"; -- 1024
             when others =>
-              base_r := x"FF"; base_g := x"FF"; base_b := x"FF"; -- 2048+
+              base_r := x"FF"; base_g := x"FF"; base_b := x"FF"; -- 2048 (no more different colored tiles or values after this)
           end case;
 
           -- default tile fill
@@ -111,12 +110,12 @@ begin
           Green <= base_g;
           Blue  <= base_b;
 
-          -- text color
+          -- the text color
           text_r := x"22";
           text_g := x"22";
           text_b := x"22";
 
-          -- convert encoded value to actual displayed number
+          -- converting tthe encoded value to actual displayed number
           case val is
             when 1  => actual_num := 2;
             when 2  => actual_num := 4;
@@ -158,7 +157,7 @@ begin
             d3 := actual_num mod 10;
           end if;
 
-          -- choose digit size based on how many digits
+          -- choosing the digit size based on how many digits so it fits
           if num_digits = 1 then
             digit_w   := 28;
             digit_h   := 48;

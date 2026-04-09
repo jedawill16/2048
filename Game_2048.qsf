@@ -1119,4 +1119,5 @@ set_global_assignment -name VHDL_FILE tiles_2048.vhd
 set_global_assignment -name VHDL_FILE movement.vhd
 set_global_assignment -name VHDL_FILE board_manager.vhd
 set_global_assignment -name VHDL_FILE random_generation.vhd
+set_global_assignment -name VHDL_FILE game_status_overlay.vhd
 set_instance_assignment -name PARTITION_HIERARCHY root_partition -to | -section_id Top

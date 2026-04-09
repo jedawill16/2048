@@ -1,12 +1,12 @@
-Fitter Status : Successful - Wed Apr  8 18:37:52 2026
+Fitter Status : Successful - Wed Apr  8 20:26:25 2026
 Quartus Prime Version : 25.1std.0 Build 1129 10/21/2025 SC Lite Edition
 Revision Name : Game_2048
 Top-level Entity Name : DE2_115_TOP
 Family : Cyclone IV E
 Device : EP4CE115F29C7
 Timing Models : Final
-Total logic elements : 25,125 / 114,480 ( 22 % )
-    Total combinational functions : 25,123 / 114,480 ( 22 % )
+Total logic elements : 26,732 / 114,480 ( 23 % )
+    Total combinational functions : 26,732 / 114,480 ( 23 % )
     Dedicated logic registers : 158 / 114,480 ( < 1 % )
 Total registers : 158
 Total pins : 207 / 529 ( 39 % )

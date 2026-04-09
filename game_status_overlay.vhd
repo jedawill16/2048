@@ -1,0 +1,304 @@
+library ieee;
+use ieee.std_logic_1164.all;
+use ieee.numeric_std.all;
+
+entity game_status_overlay is
+  port(
+    pixel_row    : in  std_logic_vector(10 downto 0);
+    pixel_column : in  std_logic_vector(10 downto 0);
+    game_won     : in  std_logic;
+    game_over    : in  std_logic;
+    overlay_on   : out std_logic;
+    Red          : out std_logic_vector(7 downto 0);
+    Green        : out std_logic_vector(7 downto 0);
+    Blue         : out std_logic_vector(7 downto 0)
+  );
+end game_status_overlay;
+
+architecture behavior of game_status_overlay is
+  constant SCREEN_W : integer := 1024;
+  constant SCREEN_H : integer := 768;
+
+  constant FONT_W   : integer := 5;
+  constant FONT_H   : integer := 7;
+  constant SCALE    : integer := 10;
+  constant GAP      : integer := 10;
+
+  function glyph_row(ch : character; r : integer) return std_logic_vector is
+  begin
+    case ch is
+      when 'A' =>
+        case r is
+          when 0 => return "01110";
+          when 1 => return "10001";
+          when 2 => return "10001";
+          when 3 => return "11111";
+          when 4 => return "10001";
+          when 5 => return "10001";
+          when others => return "10001";
+        end case;
+
+      when 'E' =>
+        case r is
+          when 0 => return "11111";
+          when 1 => return "10000";
+          when 2 => return "10000";
+          when 3 => return "11110";
+          when 4 => return "10000";
+          when 5 => return "10000";
+          when others => return "11111";
+        end case;
+
+      when 'G' =>
+        case r is
+          when 0 => return "01111";
+          when 1 => return "10000";
+          when 2 => return "10000";
+          when 3 => return "10111";
+          when 4 => return "10001";
+          when 5 => return "10001";
+          when others => return "01110";
+        end case;
+
+      when 'I' =>
+        case r is
+          when 0 => return "11111";
+          when 1 => return "00100";
+          when 2 => return "00100";
+          when 3 => return "00100";
+          when 4 => return "00100";
+          when 5 => return "00100";
+          when others => return "11111";
+        end case;
+
+      when 'M' =>
+        case r is
+          when 0 => return "10001";
+          when 1 => return "11011";
+          when 2 => return "10101";
+          when 3 => return "10101";
+          when 4 => return "10001";
+          when 5 => return "10001";
+          when others => return "10001";
+        end case;
+
+      when 'N' =>
+        case r is
+          when 0 => return "10001";
+          when 1 => return "11001";
+          when 2 => return "10101";
+          when 3 => return "10011";
+          when 4 => return "10001";
+          when 5 => return "10001";
+          when others => return "10001";
+        end case;
+
+      when 'O' =>
+        case r is
+          when 0 => return "01110";
+          when 1 => return "10001";
+          when 2 => return "10001";
+          when 3 => return "10001";
+          when 4 => return "10001";
+          when 5 => return "10001";
+          when others => return "01110";
+        end case;
+
+      when 'R' =>
+        case r is
+          when 0 => return "11110";
+          when 1 => return "10001";
+          when 2 => return "10001";
+          when 3 => return "11110";
+          when 4 => return "10100";
+          when 5 => return "10010";
+          when others => return "10001";
+        end case;
+
+      when 'V' =>
+        case r is
+          when 0 => return "10001";
+          when 1 => return "10001";
+          when 2 => return "10001";
+          when 3 => return "10001";
+          when 4 => return "10001";
+          when 5 => return "01010";
+          when others => return "00100";
+        end case;
+
+      when 'W' =>
+        case r is
+          when 0 => return "10001";
+          when 1 => return "10001";
+          when 2 => return "10001";
+          when 3 => return "10101";
+          when 4 => return "10101";
+          when 5 => return "10101";
+          when others => return "01010";
+        end case;
+
+      when ' ' =>
+        return "00000";
+
+      when others =>
+        return "00000";
+    end case;
+  end function;
+
+begin
+  process(pixel_row, pixel_column, game_won, game_over)
+    constant WIN_MSG  : string(1 to 3) := "WIN";
+    constant LINE1    : string(1 to 4) := "GAME";
+    constant LINE2    : string(1 to 4) := "OVER";
+
+    variable x, y : integer;
+    variable draw_text : boolean;
+    variable draw_box  : boolean;
+
+    variable msg_x0, msg_y0 : integer;
+    variable line_x0, line1_y0, line2_y0 : integer;
+    variable char_index : integer;
+    variable lx, ly : integer;
+    variable gx, gy : integer;
+    variable row_bits : std_logic_vector(4 downto 0);
+
+    variable win_w   : integer;
+    variable game_w  : integer;
+    variable over_w  : integer;
+    variable text_h  : integer;
+
+    variable box_x0, box_y0, box_x1, box_y1 : integer;
+  begin
+    x := to_integer(unsigned(pixel_column));
+    y := to_integer(unsigned(pixel_row));
+
+    overlay_on <= '0';
+    Red   <= (others => '0');
+    Green <= (others => '0');
+    Blue  <= (others => '0');
+
+    if (game_won = '1') or (game_over = '1') then
+      overlay_on <= '1';
+
+      -- dark color to cover the screen
+      Red   <= x"40";
+      Green <= x"40";
+      Blue  <= x"40";
+
+      win_w  := 3 * FONT_W * SCALE + 2 * GAP;
+      game_w := 4 * FONT_W * SCALE + 3 * GAP;
+      over_w := 4 * FONT_W * SCALE + 3 * GAP;
+      text_h := FONT_H * SCALE;
+
+      if game_won = '1' then
+        msg_x0 := (SCREEN_W - win_w) / 2;
+        msg_y0 := (SCREEN_H - text_h) / 2;
+
+        box_x0 := msg_x0 - 30;
+        box_y0 := msg_y0 - 30;
+        box_x1 := msg_x0 + win_w + 30;
+        box_y1 := msg_y0 + text_h + 30;
+
+        if (x >= box_x0) and (x < box_x1) and (y >= box_y0) and (y < box_y1) then
+          Red   <= x"F7";
+          Green <= x"E6";
+          Blue  <= x"8C";
+        end if;
+
+        draw_text := false;
+
+        if (x >= msg_x0) and (x < msg_x0 + win_w) and
+           (y >= msg_y0) and (y < msg_y0 + text_h) then
+          char_index := (x - msg_x0) / (FONT_W * SCALE + GAP);
+
+          if char_index <= 2 then
+            lx := (x - msg_x0) - char_index * (FONT_W * SCALE + GAP);
+            ly := y - msg_y0;
+
+            if (lx >= 0) and (lx < FONT_W * SCALE) and
+               (ly >= 0) and (ly < FONT_H * SCALE) then
+              gx := lx / SCALE;
+              gy := ly / SCALE;
+              row_bits := glyph_row(WIN_MSG(char_index + 1), gy);
+              if row_bits(4 - gx) = '1' then
+                draw_text := true;
+              end if;
+            end if;
+          end if;
+        end if;
+
+        if draw_text then
+          Red   <= x"55";
+          Green <= x"33";
+          Blue  <= x"00";
+        end if;
+
+      elsif game_over = '1' then
+        line_x0  := (SCREEN_W - game_w) / 2;
+        line1_y0 := (SCREEN_H / 2) - text_h - 10;
+        line2_y0 := (SCREEN_H / 2) + 10;
+
+        box_x0 := line_x0 - 30;
+        box_y0 := line1_y0 - 30;
+        box_x1 := line_x0 + game_w + 30;
+        box_y1 := line2_y0 + text_h + 30;
+
+        if (x >= box_x0) and (x < box_x1) and (y >= box_y0) and (y < box_y1) then
+          Red   <= x"D0";
+          Green <= x"60";
+          Blue  <= x"60";
+        end if;
+
+        draw_text := false;
+
+        -- top: GAME
+        if (x >= line_x0) and (x < line_x0 + game_w) and
+           (y >= line1_y0) and (y < line1_y0 + text_h) then
+          char_index := (x - line_x0) / (FONT_W * SCALE + GAP);
+
+          if char_index <= 3 then
+            lx := (x - line_x0) - char_index * (FONT_W * SCALE + GAP);
+            ly := y - line1_y0;
+
+            if (lx >= 0) and (lx < FONT_W * SCALE) and
+               (ly >= 0) and (ly < FONT_H * SCALE) then
+              gx := lx / SCALE;
+              gy := ly / SCALE;
+              row_bits := glyph_row(LINE1(char_index + 1), gy);
+              if row_bits(4 - gx) = '1' then
+                draw_text := true;
+              end if;
+            end if;
+          end if;
+        end if;
+
+        -- bottom: OVER
+        if (x >= line_x0) and (x < line_x0 + over_w) and
+           (y >= line2_y0) and (y < line2_y0 + text_h) then
+          char_index := (x - line_x0) / (FONT_W * SCALE + GAP);
+
+          if char_index <= 3 then
+            lx := (x - line_x0) - char_index * (FONT_W * SCALE + GAP);
+            ly := y - line2_y0;
+
+            if (lx >= 0) and (lx < FONT_W * SCALE) and
+               (ly >= 0) and (ly < FONT_H * SCALE) then
+              gx := lx / SCALE;
+              gy := ly / SCALE;
+              row_bits := glyph_row(LINE2(char_index + 1), gy);
+              if row_bits(4 - gx) = '1' then
+                draw_text := true;
+              end if;
+            end if;
+          end if;
+        end if;
+
+        if draw_text then
+          Red   <= x"40";
+          Green <= x"00";
+          Blue  <= x"00";
+        end if;
+      end if;
+    end if;
+  end process;
+end behavior;

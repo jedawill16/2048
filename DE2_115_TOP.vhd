@@ -119,7 +119,9 @@ architecture structural of DE2_115_TOP is
       tile_active  : out std_logic_vector(15 downto 0);
       tile_value   : out std_logic_vector(63 downto 0);
       tile_x_bus   : out std_logic_vector(175 downto 0);
-      tile_y_bus   : out std_logic_vector(175 downto 0)
+      tile_y_bus   : out std_logic_vector(175 downto 0);
+      game_won     : out std_logic;
+      game_over    : out std_logic
     );
   end component;
 
@@ -138,6 +140,19 @@ architecture structural of DE2_115_TOP is
     );
   end component;
 
+  component game_status_overlay
+    port(
+      pixel_row    : in  std_logic_vector(10 downto 0);
+      pixel_column : in  std_logic_vector(10 downto 0);
+      game_won     : in  std_logic;
+      game_over    : in  std_logic;
+      overlay_on   : out std_logic;
+      Red          : out std_logic_vector(7 downto 0);
+      Green        : out std_logic_vector(7 downto 0);
+      Blue         : out std_logic_vector(7 downto 0)
+    );
+  end component;
+
   signal red_int, green_int, blue_int : std_logic_vector(7 downto 0);
   signal vga_r_int, vga_g_int, vga_b_int : std_logic_vector(7 downto 0);
   signal horiz_sync_int, vert_sync_int : std_logic;
@@ -147,12 +162,18 @@ architecture structural of DE2_115_TOP is
   signal tile_r, tile_g, tile_b : std_logic_vector(7 downto 0);
   signal tile_on_int : std_logic;
 
+  signal overlay_r, overlay_g, overlay_b : std_logic_vector(7 downto 0);
+  signal overlay_on_int : std_logic;
+
   signal move_left_int, move_up_int, move_down_int, move_right_int : std_logic;
 
   signal tile_active_bus : std_logic_vector(15 downto 0);
   signal tile_value_bus  : std_logic_vector(63 downto 0);
   signal tile_x_bus_int  : std_logic_vector(175 downto 0);
   signal tile_y_bus_int  : std_logic_vector(175 downto 0);
+
+  signal game_won_int  : std_logic;
+  signal game_over_int : std_logic;
 
 begin
 
@@ -215,7 +236,9 @@ begin
       tile_active => tile_active_bus,
       tile_value  => tile_value_bus,
       tile_x_bus  => tile_x_bus_int,
-      tile_y_bus  => tile_y_bus_int
+      tile_y_bus  => tile_y_bus_int,
+      game_won    => game_won_int,
+      game_over   => game_over_int
     );
 
   U3: tiles_2048
@@ -232,9 +255,29 @@ begin
       Blue         => tile_b
     );
 
-  red_int   <= tile_r when tile_on_int = '1' else grid_r;
-  green_int <= tile_g when tile_on_int = '1' else grid_g;
-  blue_int  <= tile_b when tile_on_int = '1' else grid_b;
+  U_STATUS: game_status_overlay
+    port map(
+      pixel_row    => pixel_row_int,
+      pixel_column => pixel_column_int,
+      game_won     => game_won_int,
+      game_over    => game_over_int,
+      overlay_on   => overlay_on_int,
+      Red          => overlay_r,
+      Green        => overlay_g,
+      Blue         => overlay_b
+    );
+
+  red_int   <= overlay_r when overlay_on_int = '1' else
+               tile_r    when tile_on_int = '1' else
+               grid_r;
+
+  green_int <= overlay_g when overlay_on_int = '1' else
+               tile_g    when tile_on_int = '1' else
+               grid_g;
+
+  blue_int  <= overlay_b when overlay_on_int = '1' else
+               tile_b    when tile_on_int = '1' else
+               grid_b;
 
   SMA_CLKOUT <= '0';
 
